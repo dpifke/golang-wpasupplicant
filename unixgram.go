@@ -211,6 +211,32 @@ func (uc *unixgramConn) Ping() error {
 	return &ParseError{Line: string(resp)}
 }
 
+func (uc *unixgramConn) AddNetwork() (int, error) {
+	resp, err := uc.cmd("ADD_NETWORK")
+	if err != nil {
+		return -1, err
+	}
+
+	b := bytes.NewBuffer(resp)
+	return strconv.Atoi(strings.Trim(b.String(), "\n"))
+}
+
+func (uc *unixgramConn) EnableNetwork(networkID int) error {
+	return uc.runCommand(fmt.Sprintf("ENABLE_NETWORK %d", networkID))
+}
+
+func (uc *unixgramConn) SetNetwork(networkID int, variable string, value string) error {
+	return uc.runCommand(fmt.Sprintf("SET_NETWORK %d %s \"%s\"", networkID, variable, value))
+}
+
+func (uc *unixgramConn) SaveConfig() error {
+	return uc.runCommand("SAVE_CONFIG")
+}
+
+func (uc *unixgramConn) Scan() error {
+	return uc.runCommand("SCAN")
+}
+
 func (uc *unixgramConn) ScanResults() ([]ScanResult, []error) {
 	resp, err := uc.cmd("SCAN_RESULTS")
 	if err != nil {
@@ -218,6 +244,21 @@ func (uc *unixgramConn) ScanResults() ([]ScanResult, []error) {
 	}
 
 	return parseScanResults(bytes.NewBuffer(resp))
+}
+
+// runCommand is a wrapper around the uc.cmd command which makes sure the
+// command returned a successful (OK) response.
+func (uc *unixgramConn) runCommand(cmd string) error {
+	resp, err := uc.cmd(cmd)
+	if err != nil {
+		return err
+	}
+
+	if bytes.Compare(resp, []byte("OK\n")) == 0 {
+		return nil
+	}
+
+	return &ParseError{Line: string(resp)}
 }
 
 // parseScanResults parses the SCAN_RESULTS output from wpa_supplicant.  This

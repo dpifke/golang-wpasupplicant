@@ -127,6 +127,24 @@ type Conn interface {
 	// responding.
 	Ping() error
 
+	// AddNetwork creates an empty network configuration. Returns the network
+	// ID.
+	AddNetwork() (int, error)
+
+	// SetNetwork configures a network property. Returns error if the property
+	// configuration failed.
+	SetNetwork(int, string, string) error
+
+	// EnableNetwork enables a network. Returns error if the command fails.
+	EnableNetwork(int) error
+
+	// SaveConfig stores the current network configuration to disk.
+	SaveConfig() error
+
+	// Scan triggers a new scan. Returns error if the wpa_supplicant does not
+	// return OK.
+	Scan() error
+
 	// ScanResult returns the latest scanning results.  It returns a slice
 	// of scanned BSSs, and/or a slice of errors representing problems
 	// communicating with wpa_supplicant or parsing its output.
