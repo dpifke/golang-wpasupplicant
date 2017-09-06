@@ -225,12 +225,36 @@ func (uc *unixgramConn) EnableNetwork(networkID int) error {
 	return uc.runCommand(fmt.Sprintf("ENABLE_NETWORK %d", networkID))
 }
 
+func (uc *unixgramConn) DisableNetwork(networkID int) error {
+	return uc.runCommand(fmt.Sprintf("DISABLE_NETWORK %d", networkID))
+}
+
+func (uc *unixgramConn) RemoveNetwork(networkID int) error {
+	return uc.runCommand(fmt.Sprintf("REMOVE_NETWORK %d", networkID))
+}
+
+func (uc *unixgramConn) RemoveAllNetworks() error {
+	return uc.runCommand("REMOVE_NETWORK all")
+}
+
 func (uc *unixgramConn) SetNetwork(networkID int, variable string, value string) error {
 	return uc.runCommand(fmt.Sprintf("SET_NETWORK %d %s \"%s\"", networkID, variable, value))
 }
 
 func (uc *unixgramConn) SaveConfig() error {
 	return uc.runCommand("SAVE_CONFIG")
+}
+
+func (uc *unixgramConn) Reconfigure() error {
+	return uc.runCommand("RECONFIGURE")
+}
+
+func (uc *unixgramConn) Reassociate() error {
+	return uc.runCommand("REASSOCIATE")
+}
+
+func (uc *unixgramConn) Reconnect() error {
+	return uc.runCommand("RECONNECT")
 }
 
 func (uc *unixgramConn) Scan() error {
@@ -246,6 +270,15 @@ func (uc *unixgramConn) ScanResults() ([]ScanResult, []error) {
 	return parseScanResults(bytes.NewBuffer(resp))
 }
 
+func (uc *unixgramConn) ListNetworks() ([]ConfiguredNetwork, error) {
+	resp, err := uc.cmd("LIST_NETWORKS")
+	if err != nil {
+		return nil, err
+	}
+
+	return parseListNetworksResult(bytes.NewBuffer(resp))
+}
+
 // runCommand is a wrapper around the uc.cmd command which makes sure the
 // command returned a successful (OK) response.
 func (uc *unixgramConn) runCommand(cmd string) error {
@@ -259,6 +292,76 @@ func (uc *unixgramConn) runCommand(cmd string) error {
 	}
 
 	return &ParseError{Line: string(resp)}
+}
+
+func parseListNetworksResult(resp io.Reader) (res []ConfiguredNetwork, err error) {
+	s := bufio.NewScanner(resp)
+	if !s.Scan() {
+		return nil, &ParseError{}
+	}
+
+	fmt.Println("Listing networks")
+
+	networkIDCol, ssidCol, bssidCol, flagsCol, maxCol := -1, -1, -1, -1, -1
+	fmt.Println(strings.Split(s.Text(), " / "))
+	for n, col := range strings.Split(s.Text(), " / ") {
+		switch col {
+		case "network id":
+			networkIDCol = n
+		case "ssid":
+			ssidCol = n
+		case "bssid":
+			bssidCol = n
+		case "flags":
+			flagsCol = n
+		}
+
+		maxCol = n
+	}
+
+	fmt.Println(networkIDCol)
+
+	for s.Scan() {
+		ln := s.Text()
+		fields := strings.Split(ln, "\t")
+		fmt.Println(fields)
+		if len(fields) < maxCol {
+			return nil, &ParseError{Line: ln}
+		}
+
+		var networkID string
+		if networkIDCol != -1 {
+			networkID = fields[networkIDCol]
+		}
+
+		var ssid string
+		if ssidCol != -1 {
+			ssid = fields[ssidCol]
+		}
+
+		var bssid string
+		if bssidCol != -1 {
+			bssid = fields[bssidCol]
+		}
+
+		var flags []string
+		if flagsCol != -1 {
+			if len(fields[flagsCol]) >= 2 && fields[flagsCol][0] == '[' && fields[flagsCol][len(fields[flagsCol])-1] == ']' {
+				flags = strings.Split(fields[flagsCol][1:len(fields[flagsCol])-1], "][")
+			}
+		}
+
+		res = append(res, &configuredNetwork{
+			networkID: networkID,
+			ssid:      ssid,
+			bssid:     bssid,
+			flags:     flags,
+		})
+
+		// fmt.Println(res)
+	}
+
+	return res, nil
 }
 
 // parseScanResults parses the SCAN_RESULTS output from wpa_supplicant.  This

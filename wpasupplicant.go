@@ -120,6 +120,26 @@ func (r *scanResult) Frequency() int          { return r.frequency }
 func (r *scanResult) RSSI() int               { return r.rssi }
 func (r *scanResult) Flags() []string         { return r.flags }
 
+// ConfiguredNetwork is a configured network (from LIST_NETWORKS)
+type ConfiguredNetwork interface {
+	NetworkID() string
+	SSID() string
+	BSSID() string
+	Flags() []string
+}
+
+type configuredNetwork struct {
+	networkID string
+	ssid      string
+	bssid     string // Since bssid can be any
+	flags     []string
+}
+
+func (r *configuredNetwork) NetworkID() string { return r.networkID }
+func (r *configuredNetwork) BSSID() string     { return r.bssid }
+func (r *configuredNetwork) SSID() string      { return r.ssid }
+func (r *configuredNetwork) Flags() []string   { return r.flags }
+
 // Conn is a connection to wpa_supplicant over one of its communication
 // channels.
 type Conn interface {
@@ -138,8 +158,33 @@ type Conn interface {
 	// EnableNetwork enables a network. Returns error if the command fails.
 	EnableNetwork(int) error
 
+	// DisableNetwork disables a network.
+	DisableNetwork(int) error
+
+	// RemoveNetwork removes a network from the configuration.
+	RemoveNetwork(int) error
+
+	// RemoveAllNetworks removes all networks (basically running `REMOVE_NETWORK all`).
+	// Returns error if command fails.
+	RemoveAllNetworks() error
+
 	// SaveConfig stores the current network configuration to disk.
 	SaveConfig() error
+
+	// Reconfigure sends a RECONFIGURE command to the wpa_supplicant. Returns error when
+	// command fails.
+	Reconfigure() error
+
+	// Reassociate sends a REASSOCIATE command to the wpa_supplicant. Returns error when
+	// command fails.
+	Reassociate() error
+
+	// Reconnect sends a RECONNECT command to the wpa_supplicant. Returns error when
+	// command fails.
+	Reconnect() error
+
+	// ListNetworks returns the currently configured networks.
+	ListNetworks() ([]ConfiguredNetwork, error)
 
 	// Scan triggers a new scan. Returns error if the wpa_supplicant does not
 	// return OK.
