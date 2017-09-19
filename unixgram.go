@@ -199,6 +199,10 @@ func (err *ParseError) Error() string {
 	return b.String()
 }
 
+func (uc *unixgramConn) Close() error {
+	return uc.c.Close()
+}
+
 func (uc *unixgramConn) Ping() error {
 	resp, err := uc.cmd("PING")
 	if err != nil {
