@@ -58,6 +58,7 @@ type unixgramConn struct {
 	c                      *net.UnixConn
 	fd                     uintptr
 	solicited, unsolicited chan message
+	wpaEvents              chan WPAEvent
 }
 
 // socketPath is where to find the the AF_UNIX sockets for each interface.  It
@@ -91,12 +92,15 @@ func Unixgram(ifName string) (Conn, error) {
 
 	uc.solicited = make(chan message)
 	uc.unsolicited = make(chan message)
+	uc.wpaEvents = make(chan WPAEvent)
 
 	go uc.readLoop()
-
-	// TODO: issue an ACCEPT command so as to receive unsolicited
-	// messages.  (We don't do this yet, since we don't yet have any way
-	// to consume them.)
+	go uc.readUnsolicited()
+	// Issue an ATTACH command to start receiving unsolicited events.
+	err = uc.runCommand("ATTACH")
+	if err != nil {
+		return nil, err
+	}
 
 	return uc, nil
 }
@@ -160,6 +164,42 @@ func (uc *unixgramConn) readLoop() {
 	}
 }
 
+// readUnsolicited handles messages sent to the unsolicited channel and parse them
+// into a WPAEvent. At the moment we only handle `CTRL-EVENT-*` events and only events
+// where the 'payload' is formatted with key=val.
+func (uc *unixgramConn) readUnsolicited() {
+	for {
+		mgs := <-uc.unsolicited
+		data := bytes.NewBuffer(mgs.data).String()
+
+		parts := strings.Split(data, " ")
+		if len(parts) == 0 {
+			continue
+		}
+
+		if strings.Index(parts[0], "CTRL-") != 0 {
+			continue
+		}
+
+		event := WPAEvent{
+			Event:     strings.TrimPrefix(parts[0], "CTRL-EVENT-"),
+			Arguments: make(map[string]string),
+		}
+
+		for _, args := range parts[1:] {
+			if strings.Contains(args, "=") {
+				keyval := strings.Split(args, "=")
+				if len(keyval) != 2 {
+					continue
+				}
+				event.Arguments[keyval[0]] = keyval[1]
+			}
+		}
+
+		uc.wpaEvents <- event
+	}
+}
+
 // cmd executes a command and waits for a reply.
 func (uc *unixgramConn) cmd(cmd string) ([]byte, error) {
 	// TODO: block if any other commands are running
@@ -197,6 +237,10 @@ func (err *ParseError) Error() string {
 	}
 
 	return b.String()
+}
+
+func (uc *unixgramConn) EventQueue() chan WPAEvent {
+	return uc.wpaEvents
 }
 
 func (uc *unixgramConn) Close() error {

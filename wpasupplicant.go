@@ -140,6 +140,11 @@ func (r *configuredNetwork) BSSID() string     { return r.bssid }
 func (r *configuredNetwork) SSID() string      { return r.ssid }
 func (r *configuredNetwork) Flags() []string   { return r.flags }
 
+type WPAEvent struct {
+	Event     string
+	Arguments map[string]string
+}
+
 // Conn is a connection to wpa_supplicant over one of its communication
 // channels.
 type Conn interface {
@@ -197,4 +202,6 @@ type Conn interface {
 	// of scanned BSSs, and/or a slice of errors representing problems
 	// communicating with wpa_supplicant or parsing its output.
 	ScanResults() ([]ScanResult, []error)
+
+	EventQueue() chan WPAEvent
 }
