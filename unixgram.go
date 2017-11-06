@@ -273,6 +273,10 @@ func (uc *unixgramConn) EnableNetwork(networkID int) error {
 	return uc.runCommand(fmt.Sprintf("ENABLE_NETWORK %d", networkID))
 }
 
+func (uc *unixgramConn) SelectNetwork(networkID int) error {
+	return uc.runCommand(fmt.Sprintf("SELECT_NETWORK %d", networkID))
+}
+
 func (uc *unixgramConn) DisableNetwork(networkID int) error {
 	return uc.runCommand(fmt.Sprintf("DISABLE_NETWORK %d", networkID))
 }

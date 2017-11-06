@@ -166,6 +166,9 @@ type Conn interface {
 	// EnableNetwork enables a network. Returns error if the command fails.
 	EnableNetwork(int) error
 
+	// SelectNetwork selects a network (and disables the others).
+	SelectNetwork(int) error
+
 	// DisableNetwork disables a network.
 	DisableNetwork(int) error
 
