@@ -140,6 +140,28 @@ func (r *configuredNetwork) BSSID() string     { return r.bssid }
 func (r *configuredNetwork) SSID() string      { return r.ssid }
 func (r *configuredNetwork) Flags() []string   { return r.flags }
 
+type StatusResult interface {
+	WPAState() string
+	KeyMgmt() string
+	IPAddr() string
+	SSID() string
+	Address() string
+}
+
+type statusResult struct {
+	wpaState string
+	keyMgmt  string
+	ipAddr   string
+	ssid     string
+	address  string
+}
+
+func (s *statusResult) WPAState() string { return s.wpaState }
+func (s *statusResult) KeyMgmt() string  { return s.keyMgmt }
+func (s *statusResult) IPAddr() string   { return s.ipAddr }
+func (s *statusResult) SSID() string     { return s.ssid }
+func (s *statusResult) Address() string  { return s.address }
+
 type WPAEvent struct {
 	Event     string
 	Arguments map[string]string
@@ -199,6 +221,9 @@ type Conn interface {
 
 	// ListNetworks returns the currently configured networks.
 	ListNetworks() ([]ConfiguredNetwork, error)
+
+	// Status returns current wpa_supplicant status
+	Status() (StatusResult, error)
 
 	// Scan triggers a new scan. Returns error if the wpa_supplicant does not
 	// return OK.

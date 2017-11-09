@@ -330,6 +330,15 @@ func (uc *unixgramConn) ScanResults() ([]ScanResult, []error) {
 	return parseScanResults(bytes.NewBuffer(resp))
 }
 
+func (uc *unixgramConn) Status() (StatusResult, error) {
+	resp, err := uc.cmd("STATUS")
+	if err != nil {
+		return nil, err
+	}
+
+	return parseStatusResults(bytes.NewBuffer(resp))
+}
+
 func (uc *unixgramConn) ListNetworks() ([]ConfiguredNetwork, error) {
 	resp, err := uc.cmd("LIST_NETWORKS")
 	if err != nil {
@@ -360,10 +369,7 @@ func parseListNetworksResult(resp io.Reader) (res []ConfiguredNetwork, err error
 		return nil, &ParseError{}
 	}
 
-	fmt.Println("Listing networks")
-
 	networkIDCol, ssidCol, bssidCol, flagsCol, maxCol := -1, -1, -1, -1, -1
-	fmt.Println(strings.Split(s.Text(), " / "))
 	for n, col := range strings.Split(s.Text(), " / ") {
 		switch col {
 		case "network id":
@@ -379,12 +385,9 @@ func parseListNetworksResult(resp io.Reader) (res []ConfiguredNetwork, err error
 		maxCol = n
 	}
 
-	fmt.Println(networkIDCol)
-
 	for s.Scan() {
 		ln := s.Text()
 		fields := strings.Split(ln, "\t")
-		fmt.Println(fields)
 		if len(fields) < maxCol {
 			return nil, &ParseError{Line: ln}
 		}
@@ -417,8 +420,35 @@ func parseListNetworksResult(resp io.Reader) (res []ConfiguredNetwork, err error
 			bssid:     bssid,
 			flags:     flags,
 		})
+	}
 
-		// fmt.Println(res)
+	return res, nil
+}
+
+func parseStatusResults(resp io.Reader) (StatusResult, error) {
+	s := bufio.NewScanner(resp)
+
+	res := &statusResult{}
+
+	for s.Scan() {
+		ln := s.Text()
+		fields := strings.Split(ln, "=")
+		if len(fields) != 2 {
+			continue
+		}
+
+		switch fields[0] {
+		case "wpa_state":
+			res.wpaState = fields[1]
+		case "key_mgmt":
+			res.keyMgmt = fields[1]
+		case "ip_address":
+			res.ipAddr = fields[1]
+		case "ssid":
+			res.ssid = fields[1]
+		case "address":
+			res.address = fields[1]
+		}
 	}
 
 	return res, nil
