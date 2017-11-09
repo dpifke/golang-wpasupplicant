@@ -244,6 +244,10 @@ func (uc *unixgramConn) EventQueue() chan WPAEvent {
 }
 
 func (uc *unixgramConn) Close() error {
+	if err := uc.runCommand("DETACH"); err != nil {
+		return err
+	}
+
 	return uc.c.Close()
 }
 
