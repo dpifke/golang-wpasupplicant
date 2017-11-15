@@ -165,6 +165,7 @@ func (s *statusResult) Address() string  { return s.address }
 type WPAEvent struct {
 	Event     string
 	Arguments map[string]string
+	Line      string
 }
 
 // Conn is a connection to wpa_supplicant over one of its communication

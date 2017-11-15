@@ -178,12 +178,17 @@ func (uc *unixgramConn) readUnsolicited() {
 		}
 
 		if strings.Index(parts[0], "CTRL-") != 0 {
+			uc.wpaEvents <- WPAEvent{
+				Event: "MESSAGE",
+				Line:  data,
+			}
 			continue
 		}
 
 		event := WPAEvent{
 			Event:     strings.TrimPrefix(parts[0], "CTRL-EVENT-"),
 			Arguments: make(map[string]string),
+			Line:      data,
 		}
 
 		for _, args := range parts[1:] {
