@@ -73,7 +73,7 @@ func Unixgram(ifName string) (Conn, error) {
 
 	local, err := ioutil.TempFile("/tmp", "wpa_supplicant")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	os.Remove(local.Name())
 
