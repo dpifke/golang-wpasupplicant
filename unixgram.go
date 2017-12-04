@@ -303,7 +303,16 @@ func (uc *unixgramConn) RemoveAllNetworks() error {
 }
 
 func (uc *unixgramConn) SetNetwork(networkID int, variable string, value string) error {
-	return uc.runCommand(fmt.Sprintf("SET_NETWORK %d %s \"%s\"", networkID, variable, value))
+	var cmd string
+
+	// Since key_mgmt expects the value to not be wrapped in "" we do a little check here.
+	if variable == "key_mgmt" {
+		cmd = fmt.Sprintf("SET_NETWORK %d %s %s", networkID, variable, value)
+	} else {
+		cmd = fmt.Sprintf("SET_NETWORK %d %s \"%s\"", networkID, variable, value)
+	}
+
+	return uc.runCommand(cmd)
 }
 
 func (uc *unixgramConn) SaveConfig() error {
