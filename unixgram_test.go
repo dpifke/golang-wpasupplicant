@@ -131,3 +131,37 @@ func TestParseScanResults(t *testing.T) {
 		}
 	}
 }
+
+func TestParseStatusResults(t *testing.T) {
+	testData := "bssid=02:00:01:02:03:04\n" +
+		"ssid=test network\n" +
+		"pairwise_cipher=CCMP\n" +
+		"group_cipher=CCMP\n" +
+		"key_mgmt=WPA-PSK\n" +
+		"wpa_state=COMPLETED\n" +
+		"ip_address=192.168.1.21\n" +
+		"Supplicant PAE state=AUTHENTICATED\n" +
+		"suppPortStatus=Authorized\n" +
+		"EAP state=SUCCESS"
+
+	res, err := parseStatusResults(bytes.NewBufferString(testData))
+	if err != nil {
+		t.Errorf("Error parsing status result %t", err)
+	}
+
+	if res.WPAState() != "COMPLETED" {
+		t.Errorf("WPAState was not COMPLETED. Was %s", res.WPAState())
+	}
+
+	if res.IPAddr() != "192.168.1.21" {
+		t.Errorf("IPAddr was not 192.168.1.21. Was %s", res.IPAddr())
+	}
+
+	if res.KeyMgmt() != "WPA-PSK" {
+		t.Errorf("KeyMgmt was not WPA-PSK. Was %s", res.KeyMgmt())
+	}
+
+	if res.Address() != "" {
+		t.Errorf("Address should be empty. Was %s", res.Address())
+	}
+}

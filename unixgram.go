@@ -58,6 +58,7 @@ type unixgramConn struct {
 	c                      *net.UnixConn
 	fd                     uintptr
 	solicited, unsolicited chan message
+	wpaEvents              chan WPAEvent
 }
 
 // socketPath is where to find the the AF_UNIX sockets for each interface.  It
@@ -72,7 +73,7 @@ func Unixgram(ifName string) (Conn, error) {
 
 	local, err := ioutil.TempFile("/tmp", "wpa_supplicant")
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	os.Remove(local.Name())
 
@@ -91,12 +92,15 @@ func Unixgram(ifName string) (Conn, error) {
 
 	uc.solicited = make(chan message)
 	uc.unsolicited = make(chan message)
+	uc.wpaEvents = make(chan WPAEvent)
 
 	go uc.readLoop()
-
-	// TODO: issue an ACCEPT command so as to receive unsolicited
-	// messages.  (We don't do this yet, since we don't yet have any way
-	// to consume them.)
+	go uc.readUnsolicited()
+	// Issue an ATTACH command to start receiving unsolicited events.
+	err = uc.runCommand("ATTACH")
+	if err != nil {
+		return nil, err
+	}
 
 	return uc, nil
 }
@@ -160,6 +164,47 @@ func (uc *unixgramConn) readLoop() {
 	}
 }
 
+// readUnsolicited handles messages sent to the unsolicited channel and parse them
+// into a WPAEvent. At the moment we only handle `CTRL-EVENT-*` events and only events
+// where the 'payload' is formatted with key=val.
+func (uc *unixgramConn) readUnsolicited() {
+	for {
+		mgs := <-uc.unsolicited
+		data := bytes.NewBuffer(mgs.data).String()
+
+		parts := strings.Split(data, " ")
+		if len(parts) == 0 {
+			continue
+		}
+
+		if strings.Index(parts[0], "CTRL-") != 0 {
+			uc.wpaEvents <- WPAEvent{
+				Event: "MESSAGE",
+				Line:  data,
+			}
+			continue
+		}
+
+		event := WPAEvent{
+			Event:     strings.TrimPrefix(parts[0], "CTRL-EVENT-"),
+			Arguments: make(map[string]string),
+			Line:      data,
+		}
+
+		for _, args := range parts[1:] {
+			if strings.Contains(args, "=") {
+				keyval := strings.Split(args, "=")
+				if len(keyval) != 2 {
+					continue
+				}
+				event.Arguments[keyval[0]] = keyval[1]
+			}
+		}
+
+		uc.wpaEvents <- event
+	}
+}
+
 // cmd executes a command and waits for a reply.
 func (uc *unixgramConn) cmd(cmd string) ([]byte, error) {
 	// TODO: block if any other commands are running
@@ -199,6 +244,18 @@ func (err *ParseError) Error() string {
 	return b.String()
 }
 
+func (uc *unixgramConn) EventQueue() chan WPAEvent {
+	return uc.wpaEvents
+}
+
+func (uc *unixgramConn) Close() error {
+	if err := uc.runCommand("DETACH"); err != nil {
+		return err
+	}
+
+	return uc.c.Close()
+}
+
 func (uc *unixgramConn) Ping() error {
 	resp, err := uc.cmd("PING")
 	if err != nil {
@@ -211,6 +268,73 @@ func (uc *unixgramConn) Ping() error {
 	return &ParseError{Line: string(resp)}
 }
 
+func (uc *unixgramConn) AddNetwork() (int, error) {
+	resp, err := uc.cmd("ADD_NETWORK")
+	if err != nil {
+		return -1, err
+	}
+
+	b := bytes.NewBuffer(resp)
+	return strconv.Atoi(strings.Trim(b.String(), "\n"))
+}
+
+func (uc *unixgramConn) EnableNetwork(networkID int) error {
+	return uc.runCommand(fmt.Sprintf("ENABLE_NETWORK %d", networkID))
+}
+
+func (uc *unixgramConn) EnableAllNetworks() error {
+	return uc.runCommand("ENABLE_NETWORK all")
+}
+
+func (uc *unixgramConn) SelectNetwork(networkID int) error {
+	return uc.runCommand(fmt.Sprintf("SELECT_NETWORK %d", networkID))
+}
+
+func (uc *unixgramConn) DisableNetwork(networkID int) error {
+	return uc.runCommand(fmt.Sprintf("DISABLE_NETWORK %d", networkID))
+}
+
+func (uc *unixgramConn) RemoveNetwork(networkID int) error {
+	return uc.runCommand(fmt.Sprintf("REMOVE_NETWORK %d", networkID))
+}
+
+func (uc *unixgramConn) RemoveAllNetworks() error {
+	return uc.runCommand("REMOVE_NETWORK all")
+}
+
+func (uc *unixgramConn) SetNetwork(networkID int, variable string, value string) error {
+	var cmd string
+
+	// Since key_mgmt expects the value to not be wrapped in "" we do a little check here.
+	if variable == "key_mgmt" {
+		cmd = fmt.Sprintf("SET_NETWORK %d %s %s", networkID, variable, value)
+	} else {
+		cmd = fmt.Sprintf("SET_NETWORK %d %s \"%s\"", networkID, variable, value)
+	}
+
+	return uc.runCommand(cmd)
+}
+
+func (uc *unixgramConn) SaveConfig() error {
+	return uc.runCommand("SAVE_CONFIG")
+}
+
+func (uc *unixgramConn) Reconfigure() error {
+	return uc.runCommand("RECONFIGURE")
+}
+
+func (uc *unixgramConn) Reassociate() error {
+	return uc.runCommand("REASSOCIATE")
+}
+
+func (uc *unixgramConn) Reconnect() error {
+	return uc.runCommand("RECONNECT")
+}
+
+func (uc *unixgramConn) Scan() error {
+	return uc.runCommand("SCAN")
+}
+
 func (uc *unixgramConn) ScanResults() ([]ScanResult, []error) {
 	resp, err := uc.cmd("SCAN_RESULTS")
 	if err != nil {
@@ -218,6 +342,130 @@ func (uc *unixgramConn) ScanResults() ([]ScanResult, []error) {
 	}
 
 	return parseScanResults(bytes.NewBuffer(resp))
+}
+
+func (uc *unixgramConn) Status() (StatusResult, error) {
+	resp, err := uc.cmd("STATUS")
+	if err != nil {
+		return nil, err
+	}
+
+	return parseStatusResults(bytes.NewBuffer(resp))
+}
+
+func (uc *unixgramConn) ListNetworks() ([]ConfiguredNetwork, error) {
+	resp, err := uc.cmd("LIST_NETWORKS")
+	if err != nil {
+		return nil, err
+	}
+
+	return parseListNetworksResult(bytes.NewBuffer(resp))
+}
+
+// runCommand is a wrapper around the uc.cmd command which makes sure the
+// command returned a successful (OK) response.
+func (uc *unixgramConn) runCommand(cmd string) error {
+	resp, err := uc.cmd(cmd)
+	if err != nil {
+		return err
+	}
+
+	if bytes.Compare(resp, []byte("OK\n")) == 0 {
+		return nil
+	}
+
+	return &ParseError{Line: string(resp)}
+}
+
+func parseListNetworksResult(resp io.Reader) (res []ConfiguredNetwork, err error) {
+	s := bufio.NewScanner(resp)
+	if !s.Scan() {
+		return nil, &ParseError{}
+	}
+
+	networkIDCol, ssidCol, bssidCol, flagsCol, maxCol := -1, -1, -1, -1, -1
+	for n, col := range strings.Split(s.Text(), " / ") {
+		switch col {
+		case "network id":
+			networkIDCol = n
+		case "ssid":
+			ssidCol = n
+		case "bssid":
+			bssidCol = n
+		case "flags":
+			flagsCol = n
+		}
+
+		maxCol = n
+	}
+
+	for s.Scan() {
+		ln := s.Text()
+		fields := strings.Split(ln, "\t")
+		if len(fields) < maxCol {
+			return nil, &ParseError{Line: ln}
+		}
+
+		var networkID string
+		if networkIDCol != -1 {
+			networkID = fields[networkIDCol]
+		}
+
+		var ssid string
+		if ssidCol != -1 {
+			ssid = fields[ssidCol]
+		}
+
+		var bssid string
+		if bssidCol != -1 {
+			bssid = fields[bssidCol]
+		}
+
+		var flags []string
+		if flagsCol != -1 {
+			if len(fields[flagsCol]) >= 2 && fields[flagsCol][0] == '[' && fields[flagsCol][len(fields[flagsCol])-1] == ']' {
+				flags = strings.Split(fields[flagsCol][1:len(fields[flagsCol])-1], "][")
+			}
+		}
+
+		res = append(res, &configuredNetwork{
+			networkID: networkID,
+			ssid:      ssid,
+			bssid:     bssid,
+			flags:     flags,
+		})
+	}
+
+	return res, nil
+}
+
+func parseStatusResults(resp io.Reader) (StatusResult, error) {
+	s := bufio.NewScanner(resp)
+
+	res := &statusResult{}
+
+	for s.Scan() {
+		ln := s.Text()
+		fields := strings.Split(ln, "=")
+		if len(fields) != 2 {
+			continue
+		}
+
+		switch fields[0] {
+		case "wpa_state":
+			res.wpaState = fields[1]
+		case "key_mgmt":
+			res.keyMgmt = fields[1]
+		case "ip_address":
+			res.ipAddr = fields[1]
+		case "ssid":
+			res.ssid = fields[1]
+		case "address":
+			res.address = fields[1]
+		}
+	}
+
+	return res, nil
 }
 
 // parseScanResults parses the SCAN_RESULTS output from wpa_supplicant.  This
