@@ -331,8 +331,21 @@ func (uc *unixgramConn) Reconnect() error {
 	return uc.runCommand("RECONNECT")
 }
 
-func (uc *unixgramConn) Scan() error {
-	return uc.runCommand("SCAN")
+func (uc *unixgramConn) Scan() (error) {
+	resp, err := uc.cmd("SCAN")
+	if err != nil {
+		return err
+	}
+
+	s := bufio.NewScanner(resp)
+
+
+	for s.Scan() {
+		ln := s.Text()
+		log.Println(ln)
+	}
+
+	return err
 }
 
 func (uc *unixgramConn) ScanResults() ([]ScanResult, []error) {
