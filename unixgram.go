@@ -31,6 +31,7 @@ package wpasupplicant
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -360,6 +361,19 @@ func (uc *unixgramConn) ListNetworks() ([]ConfiguredNetwork, error) {
 	}
 
 	return parseListNetworksResult(bytes.NewBuffer(resp))
+}
+
+func (uc *unixgramConn) SetCountry(country string) error {
+	var cmd string
+
+	// Since key_mgmt expects the value to not be wrapped in "" we do a little check here.
+	if len(country) == 2 {
+		cmd = fmt.Sprintf("SET COUNTRY %s", country)
+	} else {
+		return errors.New("only ISO 3166-1 alpha-2 (two-letter) country codes are allowed")
+	}
+
+	return uc.runCommand(cmd)
 }
 
 // runCommand is a wrapper around the uc.cmd command which makes sure the

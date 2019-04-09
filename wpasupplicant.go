@@ -230,6 +230,9 @@ type Conn interface {
 	// return OK.
 	Scan() error
 
+	// Set country variable:
+	SetCountry(string) error
+
 	// ScanResult returns the latest scanning results.  It returns a slice
 	// of scanned BSSs, and/or a slice of errors representing problems
 	// communicating with wpa_supplicant or parsing its output.
