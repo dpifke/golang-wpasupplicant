@@ -337,7 +337,7 @@ func (uc *unixgramConn) Scan() (error) {
 		return err
 	}
 
-	s := bufio.NewScanner(resp)
+	s := bufio.NewScanner(bytes.NewBuffer(resp))
 
 
 	for s.Scan() {
