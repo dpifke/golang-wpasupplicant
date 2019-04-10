@@ -337,6 +337,10 @@ func (uc *unixgramConn) Reconnect() error {
 	return uc.runCommand("RECONNECT")
 }
 
+func (uc *unixgramConn) Disconnect() error {
+	return uc.runCommand("DISCONNECT")
+}
+
 func (uc *unixgramConn) Scan() error {
 	return uc.runCommand("SCAN")
 }

@@ -220,6 +220,10 @@ type Conn interface {
 	// command fails.
 	Reconnect() error
 
+	// Disconnect sends a DISCONNECT command to the wpa_supplicant. Returns error when
+	// command fails.
+	Disconnect() error
+
 	// ListNetworks returns the currently configured networks.
 	ListNetworks() ([]ConfiguredNetwork, error)
 
