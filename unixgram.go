@@ -371,7 +371,6 @@ func (uc *unixgramConn) ListNetworks() ([]ConfiguredNetwork, error) {
 func (uc *unixgramConn) SetCountry(country string) error {
 	var cmd string
 
-	// Since key_mgmt expects the value to not be wrapped in "" we do a little check here.
 	if len(country) == 2 {
 		cmd = fmt.Sprintf("SET country %s", country)
 	} else {
@@ -406,6 +405,7 @@ func parseListNetworksResult(resp io.Reader) (res []ConfiguredNetwork, err error
 
 	networkIDCol, ssidCol, bssidCol, flagsCol, maxCol := -1, -1, -1, -1, -1
 	for n, col := range strings.Split(s.Text(), " / ") {
+		fmt.Println(col)
 		switch col {
 		case "network id":
 			networkIDCol = n
