@@ -315,7 +315,7 @@ func (uc *unixgramConn) SetNetwork(networkID int, variable string, value string)
 			cmd = fmt.Sprintf("SET_NETWORK %d %s \"%s\"", networkID, variable, value)
 		}
 	}
-	
+
 	fmt.Println(cmd)
 
 	return uc.runCommand(cmd)
@@ -391,6 +391,8 @@ func (uc *unixgramConn) runCommand(cmd string) error {
 
 	if bytes.Compare(resp, []byte("OK\n")) == 0 {
 		return nil
+	} else if bytes.Compare(resp, []byte("FAIL\n")) == 0{
+		return errors.New("FAIL")
 	}
 
 	return &ParseError{Line: string(resp)}
