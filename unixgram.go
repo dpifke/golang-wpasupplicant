@@ -373,7 +373,7 @@ func (uc *unixgramConn) SetCountry(country string) error {
 
 	// Since key_mgmt expects the value to not be wrapped in "" we do a little check here.
 	if len(country) == 2 {
-		cmd = fmt.Sprintf("SET COUNTRY %s", country)
+		cmd = fmt.Sprintf("SET country %s", country)
 	} else {
 		return errors.New("only ISO 3166-1 alpha-2 (two-letter) country codes are allowed")
 	}
