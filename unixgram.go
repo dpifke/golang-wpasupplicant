@@ -307,12 +307,15 @@ func (uc *unixgramConn) SetNetwork(networkID int, variable string, value string)
 	var cmd string
 
 	// Since key_mgmt expects the value to not be wrapped in "" we do a little check here.
-	if variable == "key_mgmt" {
-		cmd = fmt.Sprintf("SET_NETWORK %d %s %s", networkID, variable, value)
-	} else {
-		cmd = fmt.Sprintf("SET_NETWORK %d %s \"%s\"", networkID, variable, value)
+	switch variable {
+		case "key_mgmt", "bssid": {
+			cmd = fmt.Sprintf("SET_NETWORK %d %s %s", networkID, variable, value)
+		}
+		default: {
+			cmd = fmt.Sprintf("SET_NETWORK %d %s \"%s\"", networkID, variable, value)
+		}
 	}
-
+	
 	fmt.Println(cmd)
 
 	return uc.runCommand(cmd)
