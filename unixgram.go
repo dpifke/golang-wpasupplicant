@@ -296,7 +296,7 @@ func (uc *unixgramConn) DisableNetwork(networkID int) error {
 }
 
 func (uc *unixgramConn) DisableAllNetwork() error {
-	return uc.runCommand(fmt.Sprintf("DISABLE_NETWORK all", networkID))
+	return uc.runCommand("DISABLE_NETWORK all")
 }
 
 func (uc *unixgramConn) RemoveNetwork(networkID int) error {
