@@ -313,6 +313,8 @@ func (uc *unixgramConn) SetNetwork(networkID int, variable string, value string)
 		cmd = fmt.Sprintf("SET_NETWORK %d %s \"%s\"", networkID, variable, value)
 	}
 
+	fmt.Println(cmd)
+
 	return uc.runCommand(cmd)
 }
 
