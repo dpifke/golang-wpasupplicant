@@ -326,7 +326,7 @@ func (uc *unixgramConn) SetNetwork(networkID int, variable string, value string)
 }
 
 func (uc *unixgramConn) SaveConfig() error {
-	return uc.runCommand("SAVE_CONFIG")d
+	return uc.runCommand("SAVE_CONFIG")
 }
 
 func (uc *unixgramConn) Reconfigure() error {
