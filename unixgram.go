@@ -405,7 +405,6 @@ func parseListNetworksResult(resp io.Reader) (res []ConfiguredNetwork, err error
 
 	networkIDCol, ssidCol, bssidCol, flagsCol, maxCol := -1, -1, -1, -1, -1
 	for n, col := range strings.Split(s.Text(), " / ") {
-		fmt.Println(col)
 		switch col {
 		case "network id":
 			networkIDCol = n
@@ -423,7 +422,6 @@ func parseListNetworksResult(resp io.Reader) (res []ConfiguredNetwork, err error
 	for s.Scan() {
 		ln := s.Text()
 		fields := strings.Split(ln, "\t")
-		fmt.Println(fields)
 		if len(fields) < maxCol {
 			return nil, &ParseError{Line: ln}
 		}
