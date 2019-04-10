@@ -423,7 +423,7 @@ func parseListNetworksResult(resp io.Reader) (res []ConfiguredNetwork, err error
 	for s.Scan() {
 		ln := s.Text()
 		fields := strings.Split(ln, "\t")
-		log.Println(fields)
+		fmt.Println(fields)
 		if len(fields) < maxCol {
 			return nil, &ParseError{Line: ln}
 		}
