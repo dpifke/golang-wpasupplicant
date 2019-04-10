@@ -295,6 +295,10 @@ func (uc *unixgramConn) DisableNetwork(networkID int) error {
 	return uc.runCommand(fmt.Sprintf("DISABLE_NETWORK %d", networkID))
 }
 
+func (uc *unixgramConn) DisableAllNetwork() error {
+	return uc.runCommand(fmt.Sprintf("DISABLE_NETWORK all", networkID))
+}
+
 func (uc *unixgramConn) RemoveNetwork(networkID int) error {
 	return uc.runCommand(fmt.Sprintf("REMOVE_NETWORK %d", networkID))
 }
@@ -322,7 +326,7 @@ func (uc *unixgramConn) SetNetwork(networkID int, variable string, value string)
 }
 
 func (uc *unixgramConn) SaveConfig() error {
-	return uc.runCommand("SAVE_CONFIG")
+	return uc.runCommand("SAVE_CONFIG")d
 }
 
 func (uc *unixgramConn) Reconfigure() error {
