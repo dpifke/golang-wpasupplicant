@@ -400,6 +400,8 @@ func (uc *unixgramConn) runCommand(cmd string) error {
 		return nil
 	} else if bytes.Compare(resp, []byte("FAIL\n")) == 0{
 		return errors.New("FAIL")
+	} else if bytes.Compare(resp, []byte("FAIL-BUSY\n")) == 0{
+		return errors.New("FAIL-BUSY")
 	}
 
 	return &ParseError{Line: string(resp)}
