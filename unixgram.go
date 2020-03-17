@@ -462,6 +462,10 @@ func parseStatusResults(resp io.Reader) (StatusResult, error) {
 			res.ssid = fields[1]
 		case "address":
 			res.address = fields[1]
+		case "bssid":
+			res.bssid = fields[1]
+		case "freq":
+			res.freq = fields[1]
 		}
 	}
 
