@@ -31,6 +31,8 @@ package wpasupplicant
 import (
 	"bufio"
 	"bytes"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -262,7 +264,7 @@ func (uc *unixgramConn) Ping() error {
 		return err
 	}
 
-	if bytes.Compare(resp, []byte("PONG\n")) == 0 {
+	if bytes.Equal(resp, []byte("PONG\n")) {
 		return nil
 	}
 	return &ParseError{Line: string(resp)}
@@ -302,17 +304,36 @@ func (uc *unixgramConn) RemoveAllNetworks() error {
 	return uc.runCommand("REMOVE_NETWORK all")
 }
 
-func (uc *unixgramConn) SetNetwork(networkID int, variable string, value string) error {
-	var cmd string
+func (uc *unixgramConn) SetNetwork(networkID int, variable string, value interface{}) error {
+	b := strings.Builder{}
+	b.WriteString("SET_NETWORK")
+	b.WriteString(" ")
+	b.WriteString(strconv.Itoa(networkID))
+	b.WriteString(" ")
+	b.WriteString(variable)
+	b.WriteString(" ")
 
 	// Since key_mgmt expects the value to not be wrapped in "" we do a little check here.
-	if variable == "key_mgmt" {
-		cmd = fmt.Sprintf("SET_NETWORK %d %s %s", networkID, variable, value)
-	} else {
-		cmd = fmt.Sprintf("SET_NETWORK %d %s \"%s\"", networkID, variable, value)
+	// Update: since we have to support AP mode, we need to support integer value (and hex value that just for non-ascii ssid)
+	switch v := value.(type) {
+	case string:
+		switch variable {
+		case "key_mgmt":
+			b.WriteString(v)
+		default:
+			b.WriteString("\"")
+			b.WriteString(v)
+			b.WriteString("\"")
+		}
+	case int:
+		b.WriteString(strconv.Itoa(v))
+	case []byte:
+		b.WriteString(hex.EncodeToString(v))
+	default:
+		return errors.New("unsupported value type")
 	}
 
-	return uc.runCommand(cmd)
+	return uc.runCommand(b.String())
 }
 
 func (uc *unixgramConn) SaveConfig() error {
@@ -370,7 +391,7 @@ func (uc *unixgramConn) runCommand(cmd string) error {
 		return err
 	}
 
-	if bytes.Compare(resp, []byte("OK\n")) == 0 {
+	if bytes.Equal(resp, []byte("OK\n")) {
 		return nil
 	}
 

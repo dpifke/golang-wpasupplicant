@@ -190,22 +190,26 @@ type Conn interface {
 
 	// SetNetwork configures a network property. Returns error if the property
 	// configuration failed.
-	SetNetwork(int, string, string) error
+	// Value's type must one of int, string and []byte. The int type always shown
+	// without double quotes. The string type always shown with double quotes except
+	// the variable name is key_mgmt. The []byte type only uses for ssid, maybe useful
+	// when it contains non-ascii encoded chars.
+	SetNetwork(networkID int, variable string, value interface{}) error
 
 	// EnableNetwork enables a network. Returns error if the command fails.
-	EnableNetwork(int) error
+	EnableNetwork(networkID int) error
 
 	// EnableAllNetworks enables all configured networks. Returns error if the command fails.
 	EnableAllNetworks() error
 
 	// SelectNetwork selects a network (and disables the others).
-	SelectNetwork(int) error
+	SelectNetwork(networkID int) error
 
 	// DisableNetwork disables a network.
-	DisableNetwork(int) error
+	DisableNetwork(networkID int) error
 
 	// RemoveNetwork removes a network from the configuration.
-	RemoveNetwork(int) error
+	RemoveNetwork(networkID int) error
 
 	// RemoveAllNetworks removes all networks (basically running `REMOVE_NETWORK all`).
 	// Returns error if command fails.
