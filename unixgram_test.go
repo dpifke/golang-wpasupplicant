@@ -44,14 +44,14 @@ var parseScanResultTests = []struct {
 			"8a:15:14:8a:46:51\t5560\t-58\t[WPA-PSK-CCMP+TKIP][WPA2-PSK-CCMP+TKIP][ESS]\tWIP-Backoffice\n" +
 			"8a:15:14:8a:46:50\t5560\t-58\t[WPA-PSK-CCMP+TKIP][WPA2-PSK-CCMP+TKIP][ESS]\tWorkInProgressMember\n",
 		expect: []*scanResult{
-			&scanResult{
+			{
 				bssid:     net.HardwareAddr{0x8a, 0x15, 0x14, 0x8a, 0x46, 0x51},
 				frequency: 5560,
 				rssi:      -58,
 				flags:     []string{"WPA-PSK-CCMP+TKIP", "WPA2-PSK-CCMP+TKIP", "ESS"},
 				ssid:      "WIP-Backoffice",
 			},
-			&scanResult{
+			{
 				bssid:     net.HardwareAddr{0x8a, 0x15, 0x14, 0x8a, 0x46, 0x50},
 				frequency: 5560,
 				rssi:      -58,
@@ -66,12 +66,12 @@ var parseScanResultTests = []struct {
 			"5560\t8a:15:14:8a:46:51\thello\tWIP-Backoffice\n" +
 			"5560\t8a:15:14:8a:46:50\tgoodbye\tWorkInProgressMember\n",
 		expect: []*scanResult{
-			&scanResult{
+			{
 				bssid:     net.HardwareAddr{0x8a, 0x15, 0x14, 0x8a, 0x46, 0x51},
 				frequency: 5560,
 				ssid:      "WIP-Backoffice",
 			},
-			&scanResult{
+			{
 				bssid:     net.HardwareAddr{0x8a, 0x15, 0x14, 0x8a, 0x46, 0x50},
 				frequency: 5560,
 				ssid:      "WorkInProgressMember",
@@ -93,7 +93,7 @@ func TestParseScanResults(t *testing.T) {
 
 		for i := range output {
 			if test.expect[i].bssid != nil {
-				if bytes.Compare(output[i].BSSID(), test.expect[i].bssid) != 0 {
+				if !bytes.Equal(output[i].BSSID(), test.expect[i].bssid) {
 					t.Errorf("wrong bssid (got %q, expect %q)", output[i].BSSID(), test.expect[i].bssid)
 				}
 			}
