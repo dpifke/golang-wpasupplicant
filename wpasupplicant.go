@@ -204,8 +204,8 @@ type Conn interface {
 	// DisableNetwork disables a network.
 	DisableNetwork(int) error
 
-	// DisableAllNetwork disables all networks.
-	DisableAllNetwork() error
+	// DisableAllNetworks disables all networks.
+	DisableAllNetworks() error
 
 	// RemoveNetwork removes a network from the configuration.
 	RemoveNetwork(int) error

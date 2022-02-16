@@ -295,7 +295,7 @@ func (uc *unixgramConn) DisableNetwork(networkID int) error {
 	return uc.runCommand(fmt.Sprintf("DISABLE_NETWORK %d", networkID))
 }
 
-func (uc *unixgramConn) DisableAllNetwork() error {
+func (uc *unixgramConn) DisableAllNetworks() error {
 	return uc.runCommand("DISABLE_NETWORK all")
 }
 
@@ -312,10 +312,12 @@ func (uc *unixgramConn) SetNetwork(networkID int, variable string, value string)
 
 	// Since key_mgmt expects the value to not be wrapped in "" we do a little check here.
 	switch variable {
-		case "key_mgmt", "bssid": {
+	case "key_mgmt", "bssid":
+		{
 			cmd = fmt.Sprintf("SET_NETWORK %d %s %s", networkID, variable, value)
 		}
-		default: {
+	default:
+		{
 			cmd = fmt.Sprintf("SET_NETWORK %d %s \"%s\"", networkID, variable, value)
 		}
 	}
@@ -398,9 +400,9 @@ func (uc *unixgramConn) runCommand(cmd string) error {
 
 	if bytes.Compare(resp, []byte("OK\n")) == 0 {
 		return nil
-	} else if bytes.Compare(resp, []byte("FAIL\n")) == 0{
+	} else if bytes.Compare(resp, []byte("FAIL\n")) == 0 {
 		return errors.New("FAIL")
-	} else if bytes.Compare(resp, []byte("FAIL-BUSY\n")) == 0{
+	} else if bytes.Compare(resp, []byte("FAIL-BUSY\n")) == 0 {
 		return errors.New("FAIL-BUSY")
 	}
 
