@@ -39,7 +39,9 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
+	"time"
 )
 
 // message is a queued response (or read error) from the wpa_supplicant
@@ -59,6 +61,8 @@ type unixgramConn struct {
 	fd                     uintptr
 	solicited, unsolicited chan message
 	wpaEvents              chan WPAEvent
+	cmdLock                sync.Mutex
+	timeout                time.Duration
 }
 
 // socketPath is where to find the the AF_UNIX sockets for each interface.  It
@@ -103,6 +107,14 @@ func Unixgram(ifName string) (Conn, error) {
 	}
 
 	return uc, nil
+}
+
+func (uc *unixgramConn) Timeout() time.Duration {
+	return uc.timeout
+}
+
+func (uc *unixgramConn) SetTimeout(timeout time.Duration) {
+	uc.timeout = timeout
 }
 
 // readLoop is spawned after we connect.  It receives messages from the
@@ -207,15 +219,25 @@ func (uc *unixgramConn) readUnsolicited() {
 
 // cmd executes a command and waits for a reply.
 func (uc *unixgramConn) cmd(cmd string) ([]byte, error) {
-	// TODO: block if any other commands are running
+	uc.cmdLock.Lock()
+	defer uc.cmdLock.Unlock()
 
 	_, err := uc.c.Write([]byte(cmd))
 	if err != nil {
 		return nil, err
 	}
 
-	msg := <-uc.solicited
-	return msg.data, msg.err
+	if uc.timeout == 0 {
+		msg := <-uc.solicited
+		return msg.data, msg.err
+	}
+
+	select {
+	case msg := <-uc.solicited:
+		return msg.data, msg.err
+	case <-time.After(uc.timeout):
+		return nil, fmt.Errorf("Timeout waiting for message")
+	}
 }
 
 // ParseError is returned when we can't parse the wpa_supplicant response.

@@ -35,6 +35,7 @@ package wpasupplicant
 
 import (
 	"net"
+	"time"
 )
 
 // Cipher is one of the WPA_CIPHER constants from the wpa_supplicant source.
@@ -242,4 +243,12 @@ type Conn interface {
 	ScanResults() ([]ScanResult, []error)
 
 	EventQueue() chan WPAEvent
+
+	// Timeout returns the current timeout value for waiting for command responses
+	// from WPS Supplicant
+	Timeout() time.Duration
+
+	// SetTimeout defines the timeout value of how long to wait for WPA Supplicant
+	// command responses
+	SetTimeout(time.Duration)
 }
