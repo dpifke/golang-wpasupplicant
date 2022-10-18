@@ -205,6 +205,9 @@ type Conn interface {
 	// DisableNetwork disables a network.
 	DisableNetwork(int) error
 
+	// DisableAllNetworks disables all networks.
+	DisableAllNetworks() error
+
 	// RemoveNetwork removes a network from the configuration.
 	RemoveNetwork(int) error
 
@@ -227,6 +230,10 @@ type Conn interface {
 	// command fails.
 	Reconnect() error
 
+	// Disconnect sends a DISCONNECT command to the wpa_supplicant. Returns error when
+	// command fails.
+	Disconnect() error
+
 	// ListNetworks returns the currently configured networks.
 	ListNetworks() ([]ConfiguredNetwork, error)
 
@@ -236,6 +243,9 @@ type Conn interface {
 	// Scan triggers a new scan. Returns error if the wpa_supplicant does not
 	// return OK.
 	Scan() error
+
+	// Set country variable:
+	SetCountry(string) error
 
 	// ScanResult returns the latest scanning results.  It returns a slice
 	// of scanned BSSs, and/or a slice of errors representing problems

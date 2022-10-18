@@ -31,6 +31,7 @@ package wpasupplicant
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -316,6 +317,10 @@ func (uc *unixgramConn) DisableNetwork(networkID int) error {
 	return uc.runCommand(fmt.Sprintf("DISABLE_NETWORK %d", networkID))
 }
 
+func (uc *unixgramConn) DisableAllNetworks() error {
+	return uc.runCommand("DISABLE_NETWORK all")
+}
+
 func (uc *unixgramConn) RemoveNetwork(networkID int) error {
 	return uc.runCommand(fmt.Sprintf("REMOVE_NETWORK %d", networkID))
 }
@@ -328,11 +333,18 @@ func (uc *unixgramConn) SetNetwork(networkID int, variable string, value string)
 	var cmd string
 
 	// Since key_mgmt expects the value to not be wrapped in "" we do a little check here.
-	if variable == "key_mgmt" {
-		cmd = fmt.Sprintf("SET_NETWORK %d %s %s", networkID, variable, value)
-	} else {
-		cmd = fmt.Sprintf("SET_NETWORK %d %s \"%s\"", networkID, variable, value)
+	switch variable {
+	case "key_mgmt", "bssid":
+		{
+			cmd = fmt.Sprintf("SET_NETWORK %d %s %s", networkID, variable, value)
+		}
+	default:
+		{
+			cmd = fmt.Sprintf("SET_NETWORK %d %s \"%s\"", networkID, variable, value)
+		}
 	}
+
+	fmt.Println(cmd)
 
 	return uc.runCommand(cmd)
 }
@@ -351,6 +363,10 @@ func (uc *unixgramConn) Reassociate() error {
 
 func (uc *unixgramConn) Reconnect() error {
 	return uc.runCommand("RECONNECT")
+}
+
+func (uc *unixgramConn) Disconnect() error {
+	return uc.runCommand("DISCONNECT")
 }
 
 func (uc *unixgramConn) Scan() error {
@@ -384,6 +400,18 @@ func (uc *unixgramConn) ListNetworks() ([]ConfiguredNetwork, error) {
 	return parseListNetworksResult(bytes.NewBuffer(resp))
 }
 
+func (uc *unixgramConn) SetCountry(country string) error {
+	var cmd string
+
+	if len(country) == 2 {
+		cmd = fmt.Sprintf("SET country %s", country)
+	} else {
+		return errors.New("only ISO 3166-1 alpha-2 (two-letter) country codes are allowed")
+	}
+
+	return uc.runCommand(cmd)
+}
+
 // runCommand is a wrapper around the uc.cmd command which makes sure the
 // command returned a successful (OK) response.
 func (uc *unixgramConn) runCommand(cmd string) error {
@@ -394,6 +422,10 @@ func (uc *unixgramConn) runCommand(cmd string) error {
 
 	if bytes.Compare(resp, []byte("OK\n")) == 0 {
 		return nil
+	} else if bytes.Compare(resp, []byte("FAIL\n")) == 0 {
+		return errors.New("FAIL")
+	} else if bytes.Compare(resp, []byte("FAIL-BUSY\n")) == 0 {
+		return errors.New("FAIL-BUSY")
 	}
 
 	return &ParseError{Line: string(resp)}
